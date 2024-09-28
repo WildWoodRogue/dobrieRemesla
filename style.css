@@ -21,13 +21,10 @@ body {
     background-color: #4caf91; /* Морской зеленый */
     color: #fff;
     padding: 10px 0;
-    display: flex; /* Используем Flexbox */
+    display: grid; /* Используем Flexbox */
     align-items: flex-end;
     margin-right: 20px;
     width: 100%;
-    
-    
-    
     
     
 }
@@ -35,10 +32,6 @@ body {
 .header logo{
     margin-left: 20px;
 
-    
-    
-    
-    
     
 }
 .links {
@@ -106,4 +99,10 @@ h1 {
     border: none;
     border-radius: 5px;
     cursor: pointer;
+}
+.foot {
+    max-width: 960px;
+    margin: 0 auto;
+    background-color: #ffffffce;
+
 }
