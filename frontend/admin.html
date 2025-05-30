@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Classes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #classes-container {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button.delete {
+            background-color: #f44336;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>CRUD Classes</h1>
+
+<div id="classes-container">
+    <h2>Classes List</h2>
+    <table id="classes-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Short Description</th>
+                <th>Cost</th>
+                <th>Date</th>
+                <th>Image Link</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Classes will be dynamically added here -->
+        </tbody>
+    </table>
+</div>
+
+<div id="add-edit-form">
+    <h2>Add/Edit Class</h2>
+    <form id="class-form">
+        <input type="hidden" id="id">
+        <label for="title">Title*:</label>
+        <input type="text" id="title" required>
+
+        <label for="short_description">Short Description*:</label>
+        <textarea id="short_description" required></textarea>
+
+        <label for="description">Description:</label>
+        <textarea id="description"></textarea>
+
+        <label for="cost">Cost*:</label>
+        <input type="number" id="cost" required>
+
+        <label for="date">Date*:</label>
+        <input type="text" id="date" required>
+
+        <label for="image_link">Image Link:</label>
+        <input type="text" id="image_link">
+
+        <button type="button" id="save-button">Save</button>
+        <button type="button" id="cancel-button">Cancel</button>
+        <p id="form-error" class="error"></p>
+        <p id="form-success" class="success"></p>
+    </form>
+</div>
+
+<script>
+    // API configuration
+    const API_BASE_URL = 'http://localhost:8000';
+    
+    // DOM elements
+    const classesTable = document.getElementById('classes-table').getElementsByTagName('tbody')[0];
+    const saveButton = document.getElementById('save-button');
+    const cancelButton = document.getElementById('cancel-button');
+    const formError = document.getElementById('form-error');
+    const formSuccess = document.getElementById('form-success');
+    let currentClassId = null;
+
+    // Helper function for API requests
+    async function apiRequest(endpoint, method = 'POST', data = {}) {
+        try {
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+                mode: 'cors'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`API request failed: ${error}`);
+            throw error;
+        }
+    }
+
+    // Fetch all classes
+    async function getAllClasses() {
+        try {
+            const classes = await apiRequest('/allClass', 'POST', { count: 100 });
+            populateTable(classes);
+        } catch (error) {
+            showError(`Failed to load classes: ${error.message}`);
+        }
+    }
+
+    // Populate table with classes
+    function populateTable(classes) {
+        classesTable.innerHTML = '';
+
+        classes.forEach(cls => {
+            const row = classesTable.insertRow();
+            row.insertCell(0).textContent = cls.id;
+            row.insertCell(1).textContent = cls.title;
+            row.insertCell(2).textContent = cls.short_description;
+            row.insertCell(3).textContent = cls.cost;
+            row.insertCell(4).textContent = cls.date;
+            row.insertCell(5).textContent = cls.image_link || 'N/A';
+
+            const actionsCell = row.insertCell(6);
+            actionsCell.innerHTML = `
+                <button onclick="editClass(${cls.id})">Edit</button>
+                <button class="delete" onclick="deleteClass(${cls.id})">Delete</button>
+            `;
+        });
+    }
+
+    // Edit class
+    async function editClass(id) {
+        try {
+            currentClassId = id;
+            clearMessages();
+            
+            const cls = await apiRequest('/classId', 'POST', { id });
+            
+            document.getElementById('id').value = id;
+            document.getElementById('title').value = cls.title || '';
+            document.getElementById('short_description').value = cls.short_description || '';
+            document.getElementById('description').value = cls.description || '';
+            document.getElementById('cost').value = cls.cost || '';
+            document.getElementById('date').value = cls.date || '';
+            document.getElementById('image_link').value = cls.image_link || '';
+        } catch (error) {
+            showError(`Failed to load class: ${error.message}`);
+        }
+    }
+
+    // Delete class
+    async function deleteClass(id) {
+        if (!confirm('Are you sure you want to delete this class?')) return;
+        
+        try {
+            await apiRequest('/deleteClass', 'POST', { id });
+            showSuccess(`Class with ID ${id} deleted successfully`);
+            await getAllClasses();
+            if (currentClassId === id) resetForm();
+        } catch (error) {
+            showError(`Failed to delete class: ${error.message}`);
+        }
+    }
+
+    // Save class
+    async function saveClass() {
+        const formData = {
+            title: document.getElementById('title').value.trim(),
+            short_description: document.getElementById('short_description').value.trim(),
+            description: document.getElementById('description').value.trim(),
+            cost: parseInt(document.getElementById('cost').value) || 0,
+            date: document.getElementById('date').value.trim(),
+            image_link: document.getElementById('image_link').value.trim()
+        };
+
+        // Validation
+        if (!formData.title || !formData.short_description || isNaN(formData.cost) || !formData.date) {
+            showError('Please fill in all required fields (marked with *)');
+            return;
+        }
+
+        try {
+            if (currentClassId) {
+                formData.id = currentClassId;
+                await apiRequest('/updateClass', 'POST', formData);
+                showSuccess('Class updated successfully');
+            } else {
+                await apiRequest('/addClass', 'POST', formData);
+                showSuccess('Class created successfully');
+            }
+            
+            await getAllClasses();
+            resetForm();
+        } catch (error) {
+            showError(`Failed to save class: ${error.message}`);
+        }
+    }
+
+    // Reset form
+    function resetForm() {
+        document.getElementById('class-form').reset();
+        currentClassId = null;
+        clearMessages();
+    }
+
+    // Show error message
+    function showError(message) {
+        formError.textContent = message;
+        formSuccess.textContent = '';
+    }
+
+    // Show success message
+    function showSuccess(message) {
+        formSuccess.textContent = message;
+        formError.textContent = '';
+    }
+
+    // Clear messages
+    function clearMessages() {
+        formError.textContent = '';
+        formSuccess.textContent = '';
+    }
+
+    // Event listeners
+    saveButton.addEventListener('click', saveClass);
+    cancelButton.addEventListener('click', resetForm);
+
+    // Make functions available globally for inline handlers
+    window.editClass = editClass;
+    window.deleteClass = deleteClass;
+
+    // Initialize
+    getAllClasses();
+</script>
+</body>
+</html>
